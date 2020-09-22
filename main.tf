@@ -12,3 +12,11 @@ provider "metabase" {
   username = "..."
   password = "..."
 }
+
+# resource "metabase_card" "nicolas_test" {
+#   name = "nicolas_test"
+# }
+
+# resource "metabase_card" "yohan" {
+#   name = "Yohan"
+# }

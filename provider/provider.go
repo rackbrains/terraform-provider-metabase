@@ -1,11 +1,11 @@
 package provider
 
 import (
-	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/hashicorp/terraform/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func Provider() terraform.ResourceProvider {
+func Provider() *schema.Provider {
+	print("==========provider=============")
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
 			"host": {
@@ -26,16 +26,17 @@ func Provider() terraform.ResourceProvider {
 		},
 		ResourcesMap: map[string]*schema.Resource{
 			"metabase_card": resourceCard(),
-			// "metabase_collection": resourceCollection(),
-			// "metabase_connection": resourceConnection(),
 		},
-		// ConfigureFunc: providerConfigure,
+		ConfigureFunc: providerConfigure,
 	}
 }
 
-// func providerConfigure(d *schema.ResourceData) (interface{}, error) {
-// 	address := d.Get("host").(string)
-// 	port := d.Get("username").(string)
-// 	token := d.Get("password").(string)
-// 	return client.NewClient(address, port, token), nil
-// }
+func providerConfigure(d *schema.ResourceData) (interface{}, error) {
+	// username := d.Get("username").(string)
+	// password := d.Get("password").(string)
+
+	// var host *string
+
+	// hVal, ok := d.GetOk("host")
+	return nil, nil
+}
