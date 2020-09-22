@@ -9,19 +9,19 @@ func Provider() terraform.ResourceProvider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
 			"host": {
-				Type:        schema.TypeString,
-				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("METABASE_HOST", ""),
+				Type:     schema.TypeString,
+				Required: true,
+				// DefaultFunc: schema.EnvDefaultFunc("METABASE_HOST", ""),
 			},
 			"username": {
-				Type:        schema.TypeString,
-				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("METABASE_USERNAME", ""),
+				Type:     schema.TypeString,
+				Required: true,
+				// DefaultFunc: schema.EnvDefaultFunc("METABASE_USERNAME", ""),
 			},
 			"password": {
-				Type:        schema.TypeString,
-				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("METABASE_PASSWORD", ""),
+				Type:     schema.TypeString,
+				Required: true,
+				// DefaultFunc: schema.EnvDefaultFunc("METABASE_PASSWORD", ""),
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{

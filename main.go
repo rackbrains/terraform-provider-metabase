@@ -1,8 +1,7 @@
 package main
 
 import (
-	"github.com/PerxTech/terraform-provider-metabase/provider"
-
+	"github.com/Perxtech/terraform-provider-metabase/provider"
 	"github.com/hashicorp/terraform/plugin"
 )
 
