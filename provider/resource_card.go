@@ -52,21 +52,60 @@ func resourceCard() *schema.Resource {
 			// 	Description: "value may be nil, or if non-nil, value must be an array of valid results column metadata maps.",
 			// 	// Elem:        &schema.Schema{Type: schema.TypeString},
 			// },
-			// "metadata_checksum": {
-			// 	Type:        schema.TypeString,
-			// 	Required:    false,
-			// 	Description: "value may be nil, or if non-nil, value must be a non-blank string.",
-			// },
-			// "dataset_query": &schema.Schema{
-			// 	Required: true,
-			// 	// Elem:        &schema.Schema{Type: schema.TypeString},
-			// },
-			"display": &schema.Schema{
+			"query": &schema.Schema{
+				Type:     schema.TypeString,
+				Required: true,
+			},
+			"query_type": {
+				Type:     schema.TypeString,
 				Required: false,
 				Optional: true,
-				Type:     schema.TypeString,
+				Default:  "native",
+			},
+			"display": &schema.Schema{
+				Type: schema.TypeString,
+				// Required: false,
+				Optional: true,
 				Default:  "table",
 			},
+			// "variables": &schema.Schema{
+			// 	Type:     schema.TypeList,
+			// 	Required: false,
+			// 	Optional: true,
+			// 	Elem: &schema.Resource{
+			// 		Schema: map[string]*schema.Schema{
+			// 			// "id": &schema.Schema{
+			// 			// 	Type: schema.TypeString,
+			// 			// 	// Computed: true,
+			// 			// },
+			// 			"name": &schema.Schema{
+			// 				Type:     schema.TypeString,
+			// 				Required: true,
+			// 				// Computed: true,
+			// 			},
+			// 			// 		"type": &schema.Schema{
+			// 			// 			Type: schema.TypeString,
+			// 			// 			// Computed: true,
+			// 			// 		},
+			// 			// 		"display_name": &schema.Schema{
+			// 			// 			Type: schema.TypeString,
+			// 			// 			// Computed: true,
+			// 			// 		},
+			// 			// 		"required": &schema.Schema{
+			// 			// 			Type: schema.TypeBool,
+			// 			// 			// Computed: true,
+			// 			// 		},
+			// 			// 		"default": &schema.Schema{
+			// 			// 			Type: schema.TypeString,
+			// 			// 			// Computed: true,
+			// 			// 		},
+			// 			// 		"embedding_param": &schema.Schema{
+			// 			// 			Type: schema.TypeString,
+			// 			// 			// Computed: true,
+			// 			// 		},
+			// 		},
+			// 	},
+			// },
 		},
 		CreateContext: resourceCreateCard,
 		ReadContext:   resourceReadCard,
@@ -79,9 +118,14 @@ func resourceCard() *schema.Resource {
 	}
 }
 
+type TemplateTag struct {
+}
+
 type query struct {
-	Type     string `json:"type,omitempty"`
-	Database int    `json:"database,omitempty"`
+	Type         string        `json:"type,omitempty"`
+	Database     int           `json:"database,omitempty"`
+	Query        string        `json:"query,omitempty"`
+	TemplateTags []TemplateTag `json:"template-tags,omitempty"`
 }
 
 type CardResponse struct {
@@ -92,6 +136,7 @@ type CardResponse struct {
 	Id              int    `json:"id"`
 	Display         string `json:"display"`
 	Description     string `json:"description"`
+	DatasetQuery    query  `json:"dataset_query"`
 }
 
 type postQuery struct {
@@ -121,8 +166,13 @@ func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface
 		Name:                  d.Get("name").(string),
 		Display:               d.Get("table").(string),
 		VisualizationSettings: map[string]string{},
-		DatasetQuery:          query{Type: "native", Database: 15},
-		Description:           d.Get("description").(string),
+		DatasetQuery: query{
+			Type:         d.Get("query_type").(string),
+			Database:     15,
+			Query:        d.Get("query").(string),
+			TemplateTags: make([]TemplateTag, 0),
+		},
+		Description: d.Get("description").(string),
 	}
 	print("built query\n")
 
@@ -199,6 +249,11 @@ func resourceUpdateCard(ctx context.Context, d *schema.ResourceData, m interface
 	if d.HasChange("description") {
 		query.Description = d.Get("description").(string)
 	}
+	if d.HasChange("query_type") || d.HasChange("query") {
+		query.DatasetQuery.Type = d.Get("query_type").(string)
+		query.DatasetQuery.Query = d.Get("query").(string)
+		query.DatasetQuery.Database = 15
+	}
 	print("built query\n")
 
 	queryJson, err := json.Marshal(query)
@@ -262,4 +317,6 @@ func updateResourceFromCard(card CardResponse, d *schema.ResourceData) {
 	d.Set("name", card.Name)
 	d.Set("description", card.Description)
 	d.Set("display", card.Display)
+	d.Set("query", card.DatasetQuery.Query)
+	d.Set("query_type", card.DatasetQuery.Type)
 }
