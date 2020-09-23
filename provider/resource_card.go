@@ -13,7 +13,6 @@ import (
 )
 
 func resourceCard() *schema.Resource {
-	print("!!!!!!!!!!!!!!!!card!!!!!!!!!!!!")
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -83,7 +82,7 @@ type query struct {
 	Database int    `json:"database"`
 }
 
-type postResponse struct {
+type CardResponse struct {
 	Archived        bool   `json:"archived"`
 	CanWrite        bool   `json:"can_write"`
 	EnableEmbedding bool   `json:"enable_embedding"`
@@ -101,54 +100,62 @@ type postQuery struct {
 
 func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	print("resourceCreateCard\n")
+	c := m.(Client)
+	print("got client\n")
 	var diags diag.Diagnostics
 	print("init diags\n")
+
 	query := postQuery{
 		Name:                  d.Get("name").(string),
 		Display:               "table",
 		VisualizationSettings: map[string]string{},
 		DatasetQuery:          query{Type: "native", Database: 15},
 	}
-	print(query.Display)
 	print("built query\n")
+
 	queryJson, err := json.Marshal(query)
 	if err != nil {
-		print("has error")
+		print("json creation failed\n")
 		return diag.FromErr(err)
 	}
-
-	print(string(queryJson))
+	print(string(queryJson), "\n")
 
 	client := &http.Client{}
 	print("init http client\n")
-	req, _ := http.NewRequest("POST", "https://metabase.perxtech.io/api/card", bytes.NewBuffer(queryJson))
+	req, _ := http.NewRequest("POST", c.host+"/api/card", bytes.NewBuffer(queryJson))
 	req.Header.Add("Content-Type", `application/json`)
-	req.Header.Add("X-Metabase-Session", "")
+	req.Header.Add("X-Metabase-Session", c.id)
 	resp, err := client.Do(req)
 	print("performed request\n")
 	if err != nil {
 		print("request failed")
 		return diag.FromErr(err)
 	}
-	print("request succeeded")
+	if resp.StatusCode >= 400 {
+		print("request failed with status", resp.StatusCode, "\n")
+		return diag.Errorf("Could not initialize session with metabase")
+	}
+	print("request succeeded\n")
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	res := postResponse{}
+	print(string(body))
+	res := CardResponse{}
 	json.Unmarshal(body, &res)
-	print(fmt.Sprint(res.Id))
-	d.SetId(fmt.Sprint(res.Id))
+	updateResourceFromCard(res, d)
 	return diags
 }
 
 func resourceReadCard(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	c := m.(Client)
+
 	print("resourceReadCard\n")
 	var diags diag.Diagnostics
 	client := &http.Client{}
-	url := "https://metabase.perxtech.io/api/card/" + d.Id()
+	url := c.host + "/api/card/" + d.Id()
 	print("Getting card @ ", url, "\n")
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Add("Content-Type", `application/json`)
-	req.Header.Add("X-Metabase-Session", "")
+	req.Header.Add("X-Metabase-Session", c.id)
 	resp, err := client.Do(req)
 	print("performed request\n")
 	if err != nil {
@@ -159,27 +166,27 @@ func resourceReadCard(ctx context.Context, d *schema.ResourceData, m interface{}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	print(string(body))
-	res := postResponse{}
+	res := CardResponse{}
 	json.Unmarshal(body, &res)
-	print(fmt.Sprint(res.Id))
-	d.SetId(fmt.Sprint(res.Id))
+	updateResourceFromCard(res, d)
 	return diags
 }
 
 func resourceUpdateCard(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	print("resourceUpdateCard")
+	print("resourceUpdateCard\n")
 	return nil
 }
 
 func resourceDeleteCard(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	c := m.(Client)
 	print("resourceReadCard\n")
 	var diags diag.Diagnostics
 	client := &http.Client{}
-	url := "https://metabase.perxtech.io/api/card/" + d.Id()
+	url := c.host + "/api/card/" + d.Id()
 	print("Deleting card @ ", url, "\n")
 	req, _ := http.NewRequest("DELETE", url, nil)
 	req.Header.Add("Content-Type", `application/json`)
-	req.Header.Add("X-Metabase-Session", "")
+	req.Header.Add("X-Metabase-Session", c.id)
 	_, err := client.Do(req)
 	print("performed request\n")
 	if err != nil {
@@ -190,4 +197,10 @@ func resourceDeleteCard(ctx context.Context, d *schema.ResourceData, m interface
 
 	d.SetId("")
 	return diags
+}
+
+func updateResourceFromCard(card CardResponse, d *schema.ResourceData) {
+	print("updateResourceFromCard ", card.Id, card.Name, "\n")
+	d.SetId(fmt.Sprint(card.Id))
+	d.Set("name", card.Name)
 }

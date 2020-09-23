@@ -7,7 +7,6 @@ import (
 )
 
 func main() {
-	print("*********main****************")
 	plugin.Serve(&plugin.ServeOpts{
 		ProviderFunc: func() *schema.Provider {
 			return provider.Provider()
