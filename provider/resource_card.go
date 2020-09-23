@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -22,35 +23,19 @@ func resourceCard() *schema.Resource {
 			},
 			"description": &schema.Schema{
 				Type:        schema.TypeString,
-				Required:    false,
 				Optional:    true,
 				Description: "value may be nil, or if non-nil, value must be a non-blank string.",
 				Default:     "Managed by Terraform.",
 			},
-			// "visualization_settings": &schema.Schema{
-			// 	Type:        schema.TypeSet,
-			// 	Required:    false,
-			// Optional:    true,
-			// 	Description: "An optional list of tags, represented as a key, value pair",
-			// 	// Elem:        &schema.Schema{Type: schema.TypeString},
-			// },
-			// "collection_id": &schema.Schema{
-			// 	Type:        schema.TypeInt,
-			// 	Required:    false,
-			// Optional:    true,
-			// 	Description: "value may be nil, or if non-nil, value must be an integer greater than zero.",
-			// },
+			"collection_id": &schema.Schema{
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Description: "value may be nil, or if non-nil, value must be an integer greater than zero.",
+			},
 			// "collection_position": &schema.Schema{
 			// 	Type:        schema.TypeInt,
-			// 	Required:    false,
 			// Optional:    true,
 			// 	Description: "value may be nil, or if non-nil, value must be an integer greater than zero.",
-			// },
-			// "result_metadata": &schema.Schema{
-			// 	Type:        schema.TypeList,
-			// 	Required:    false,
-			// 	Description: "value may be nil, or if non-nil, value must be an array of valid results column metadata maps.",
-			// 	// Elem:        &schema.Schema{Type: schema.TypeString},
 			// },
 			"query": &schema.Schema{
 				Type:     schema.TypeString,
@@ -118,14 +103,15 @@ func resourceCard() *schema.Resource {
 }
 
 type CardResponse struct {
-	Archived        bool   `json:"archived"`
-	CanWrite        bool   `json:"can_write"`
+	// Archived        bool   `json:"archived"`
+	// CanWrite        bool   `json:"can_write"`
 	EnableEmbedding bool   `json:"enable_embedding"`
 	Name            string `json:"name"`
 	Id              int    `json:"id"`
 	Display         string `json:"display"`
 	Description     string `json:"description"`
 	DatasetQuery    Query  `json:"dataset_query"`
+	CollectionId    int    `json:"collection_id,omitempty"`
 }
 
 type postQuery struct {
@@ -134,14 +120,16 @@ type postQuery struct {
 	VisualizationSettings map[string]string `json:"visualization_settings"`
 	DatasetQuery          Query             `json:"dataset_query"`
 	Description           string            `json:"description,omitempty"`
+	CollectionId          int               `json:"collection_id,omitempty"`
 }
 
 type putQuery struct {
 	Name                  string            `json:"name,omitempty"`
 	Display               string            `json:"display,omitempty"`
 	VisualizationSettings map[string]string `json:"visualization_settings,omitempty"`
-	DatasetQuery          Query             `json:"dataset_query,omitempty"`
+	DatasetQuery          *Query            `json:"dataset_query,omitempty"`
 	Description           string            `json:"description,omitempty"`
+	CollectionId          int               `json:"collection_id,omitempty"`
 }
 
 type TemplateTag struct {
@@ -183,7 +171,8 @@ func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface
 				TemplateTags: extractTags(d),
 			},
 		},
-		Description: d.Get("description").(string),
+		Description:  d.Get("description").(string),
+		CollectionId: d.Get("collection_id").(int),
 	}
 	print("built query\n")
 
@@ -216,6 +205,9 @@ func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface
 	res := CardResponse{}
 	json.Unmarshal(body, &res)
 	updateResourceFromCard(res, d)
+
+	//todo update enable_embedding and embedding_params
+
 	return diags
 }
 
@@ -265,40 +257,20 @@ func resourceUpdateCard(ctx context.Context, d *schema.ResourceData, m interface
 		query.DatasetQuery.Native.Query = d.Get("query").(string)
 		query.DatasetQuery.Database = 15
 		query.DatasetQuery.Native.TemplateTags = extractTags(d)
+	} else {
+		query.DatasetQuery = nil
+	}
+	if d.HasChange("collection_id") {
+		query.CollectionId = d.Get("collection_id").(int)
 	}
 	print("built query\n")
 
-	queryJson, err := json.Marshal(query)
+	res, err := updateCard(c, d.Id(), query)
 	if err != nil {
-		print("json creation failed\n")
+		print("error while updating card")
 		return diag.FromErr(err)
 	}
-	print(string(queryJson), "\n")
-
-	client := &http.Client{}
-	print("init http client\n")
-	url := c.host + "/api/card/" + d.Id()
-	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(queryJson))
-	req.Header.Add("Content-Type", `application/json`)
-	req.Header.Add("X-Metabase-Session", c.id)
-	resp, err := client.Do(req)
-	print("performed request\n")
-	if err != nil {
-		print("request failed\n")
-		return diag.FromErr(err)
-	}
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
-
-	if resp.StatusCode >= 400 {
-		print("request failed with status", resp.StatusCode, "\n")
-		return diag.Errorf("Update Request failed " + string(body))
-	}
-	print("request succeeded\n")
-	print(string(body), "\n")
-	res := CardResponse{}
-	json.Unmarshal(body, &res)
-	updateResourceFromCard(res, d)
+	updateResourceFromCard(*res, d)
 	return diags
 }
 
@@ -331,6 +303,7 @@ func updateResourceFromCard(card CardResponse, d *schema.ResourceData) {
 	d.Set("display", card.Display)
 	d.Set("query", card.DatasetQuery.Native.Query)
 	d.Set("query_type", card.DatasetQuery.Type)
+	d.Set("collection_id", card.CollectionId)
 }
 
 func extractTags(d *schema.ResourceData) map[string]TemplateTag {
@@ -351,4 +324,38 @@ func extractTags(d *schema.ResourceData) map[string]TemplateTag {
 		tags[name] = tag
 	}
 	return tags
+}
+
+func updateCard(c Client, id string, query putQuery) (*CardResponse, error) {
+	queryJson, err := json.Marshal(query)
+	if err != nil {
+		print("json creation failed\n")
+		return nil, err
+	}
+	print(string(queryJson), "\n")
+
+	client := &http.Client{}
+	print("init http client\n")
+	url := c.host + "/api/card/" + id
+	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(queryJson))
+	req.Header.Add("Content-Type", `application/json`)
+	req.Header.Add("X-Metabase-Session", c.id)
+	resp, err := client.Do(req)
+	print("performed request\n")
+	if err != nil {
+		print("request failed\n")
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	if resp.StatusCode >= 400 {
+		print("request failed with status", resp.StatusCode, "\n")
+		return nil, errors.New("Update Request failed " + string(body))
+	}
+	print("request succeeded\n")
+	print(string(body), "\n")
+	res := CardResponse{}
+	json.Unmarshal(body, &res)
+	return &res, nil
 }
