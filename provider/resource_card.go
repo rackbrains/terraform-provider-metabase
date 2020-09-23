@@ -55,6 +55,10 @@ func resourceCard() *schema.Resource {
 				Optional: true,
 				Default:  false,
 			},
+			"connection_id": &schema.Schema{
+				Type:     schema.TypeInt,
+				Required: true,
+			},
 			"variables": &schema.Schema{
 				Type:     schema.TypeList,
 				Optional: true,
@@ -160,7 +164,7 @@ func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface
 		VisualizationSettings: map[string]string{},
 		DatasetQuery: Query{
 			Type:     d.Get("query_type").(string),
-			Database: 15,
+			Database: d.Get("connection_id").(int),
 			Native: NativeQuery{
 				Query:        d.Get("query").(string),
 				TemplateTags: extractTags(d),
@@ -258,10 +262,10 @@ func resourceUpdateCard(ctx context.Context, d *schema.ResourceData, m interface
 	if d.HasChange("description") {
 		query.Description = d.Get("description").(string)
 	}
-	if d.HasChange("query_type") || d.HasChange("query") || d.HasChange("variables") {
+	if d.HasChanges("query_type", "query", "variables", "connection_id") {
 		query.DatasetQuery = &Query{
 			Type:     d.Get("query_type").(string),
-			Database: 15,
+			Database: d.Get("connection_id").(int),
 			Native: NativeQuery{
 				Query:        d.Get("query").(string),
 				TemplateTags: extractTags(d),

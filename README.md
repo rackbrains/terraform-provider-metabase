@@ -24,24 +24,29 @@ provider "metabase" {
   password = "yyyy"
 }
 
-resource "metabase_card" "nicolas_test" {
-  name          = "nicolas test"
-  description   = "metabase terraform provider test"
-  query         = "select * from foo"
-  collection_id = 26
+resource "metabase_card" "test" {
+  name             = "Terraform test"
+  description      = "metabase terraform provider test"
+  query            = "select * from jo"
+  collection_id    = 26
+  enable_embedding = true
+  connection_id    = 15
   variables {
-    id           = "1"
-    name         = "start_date"
-    type         = "date"
-    display_name = "Start Date"
-    required     = true
+    id              = "1"
+    name            = "start_date"
+    type            = "date"
+    display_name    = "Start Date"
+    required        = true
+    embedding_param = "enabled"
+
   }
   variables {
-    id           = "2"
-    name         = "end_date"
-    type         = "date"
-    display_name = "End Date"
-    required     = true
+    id              = "2"
+    name            = "end_date"
+    type            = "date"
+    display_name    = "End Date"
+    required        = true
+    embedding_param = "locked"
   }
 }
 ```
