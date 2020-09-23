@@ -325,6 +325,8 @@ func updateResourceFromCard(card CardResponse, d *schema.ResourceData) {
 	d.Set("query_type", card.DatasetQuery.Type)
 	d.Set("collection_id", card.CollectionId)
 	d.Set("enable_embedding", card.EnableEmbedding)
+
+	//todo properly read params list
 }
 
 func extractTags(d *schema.ResourceData) map[string]TemplateTag {
