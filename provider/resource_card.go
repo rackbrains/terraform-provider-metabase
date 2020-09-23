@@ -15,17 +15,18 @@ import (
 func resourceCard() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"name": {
+			"name": &schema.Schema{
 				Type:        schema.TypeString,
 				Required:    true,
 				Description: "value must be a non-blank string.",
-				// ForceNew:    true,
 			},
-			// "description": {
-			// 	Type:        schema.TypeString,
-			// 	Required:    false,
-			// 	Description: "value may be nil, or if non-nil, value must be a non-blank string.",
-			// },
+			"description": &schema.Schema{
+				Type:        schema.TypeString,
+				Required:    false,
+				Optional:    true,
+				Description: "value may be nil, or if non-nil, value must be a non-blank string.",
+				Default:     nil,
+			},
 			// "visualization_settings": {
 			// 	Type:        schema.TypeSet,
 			// 	Required:    false,
@@ -89,13 +90,23 @@ type CardResponse struct {
 	Name            string `json:"name"`
 	Id              int    `json:"id"`
 	Display         string `json:"display"`
+	Description     string `json:"description"`
 }
 
 type postQuery struct {
+	Name                  string            `json:"name"`
+	Display               string            `json:"display"`
+	VisualizationSettings map[string]string `json:"visualization_settings"`
+	DatasetQuery          query             `json:"dataset_query"`
+	Description           string            `json:"description,omitempty"`
+}
+
+type putQuery struct {
 	Name                  string            `json:"name,omitempty"`
 	Display               string            `json:"display,omitempty"`
 	VisualizationSettings map[string]string `json:"visualization_settings,omitempty"`
 	DatasetQuery          query             `json:"dataset_query,omitempty"`
+	Description           string            `json:"description,omitempty"`
 }
 
 func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
@@ -110,6 +121,7 @@ func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface
 		Display:               "table",
 		VisualizationSettings: map[string]string{},
 		DatasetQuery:          query{Type: "native", Database: 15},
+		Description:           d.Get("description").(string),
 	}
 	print("built query\n")
 
@@ -131,13 +143,13 @@ func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface
 		print("request failed")
 		return diag.FromErr(err)
 	}
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
 	if resp.StatusCode >= 400 {
 		print("request failed with status", resp.StatusCode, "\n")
-		return diag.Errorf("Could not initialize session with metabase")
+		return diag.Errorf("Request failed: " + string(body))
 	}
 	print("request succeeded\n")
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
 	print(string(body))
 	res := CardResponse{}
 	json.Unmarshal(body, &res)
@@ -179,9 +191,12 @@ func resourceUpdateCard(ctx context.Context, d *schema.ResourceData, m interface
 	var diags diag.Diagnostics
 	print("init diags\n")
 
-	query := postQuery{}
+	query := putQuery{}
 	if d.HasChange("name") {
 		query.Name = d.Get("name").(string)
+	}
+	if d.HasChange("description") {
+		query.Description = d.Get("description").(string)
 	}
 	print("built query\n")
 
@@ -244,4 +259,5 @@ func updateResourceFromCard(card CardResponse, d *schema.ResourceData) {
 	print("updateResourceFromCard ", card.Id, card.Name, "\n")
 	d.SetId(fmt.Sprint(card.Id))
 	d.Set("name", card.Name)
+	d.Set("description", card.Description)
 }
