@@ -25,7 +25,7 @@ func resourceCard() *schema.Resource {
 				Required:    false,
 				Optional:    true,
 				Description: "value may be nil, or if non-nil, value must be a non-blank string.",
-				Default:     nil,
+				Default:     "Managed by Terraform.",
 			},
 			// "visualization_settings": &schema.Schema{
 			// 	Type:        schema.TypeSet,
@@ -58,54 +58,53 @@ func resourceCard() *schema.Resource {
 			},
 			"query_type": {
 				Type:     schema.TypeString,
-				Required: false,
 				Optional: true,
 				Default:  "native",
 			},
 			"display": &schema.Schema{
-				Type: schema.TypeString,
-				// Required: false,
+				Type:     schema.TypeString,
 				Optional: true,
 				Default:  "table",
 			},
-			// "variables": &schema.Schema{
-			// 	Type:     schema.TypeList,
-			// 	Required: false,
-			// 	Optional: true,
-			// 	Elem: &schema.Resource{
-			// 		Schema: map[string]*schema.Schema{
-			// 			// "id": &schema.Schema{
-			// 			// 	Type: schema.TypeString,
-			// 			// 	// Computed: true,
-			// 			// },
-			// 			"name": &schema.Schema{
-			// 				Type:     schema.TypeString,
-			// 				Required: true,
-			// 				// Computed: true,
-			// 			},
-			// 			// 		"type": &schema.Schema{
-			// 			// 			Type: schema.TypeString,
-			// 			// 			// Computed: true,
-			// 			// 		},
-			// 			// 		"display_name": &schema.Schema{
-			// 			// 			Type: schema.TypeString,
-			// 			// 			// Computed: true,
-			// 			// 		},
-			// 			// 		"required": &schema.Schema{
-			// 			// 			Type: schema.TypeBool,
-			// 			// 			// Computed: true,
-			// 			// 		},
-			// 			// 		"default": &schema.Schema{
-			// 			// 			Type: schema.TypeString,
-			// 			// 			// Computed: true,
-			// 			// 		},
-			// 			// 		"embedding_param": &schema.Schema{
-			// 			// 			Type: schema.TypeString,
-			// 			// 			// Computed: true,
-			// 			// 		},
-			// 		},
-			// 	},
-			// },
+			"variables": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"id": &schema.Schema{
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"name": &schema.Schema{
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"type": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"display_name": &schema.Schema{
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"required": &schema.Schema{
+							Type:     schema.TypeBool,
+							Optional: true,
+							Default:  false,
+						},
+						"default": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  nil,
+						},
+						"embedding_param": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "enabled",
+						},
+					},
+				},
+			},
 		},
 		CreateContext: resourceCreateCard,
 		ReadContext:   resourceReadCard,
@@ -118,16 +117,6 @@ func resourceCard() *schema.Resource {
 	}
 }
 
-type TemplateTag struct {
-}
-
-type query struct {
-	Type         string        `json:"type,omitempty"`
-	Database     int           `json:"database,omitempty"`
-	Query        string        `json:"query,omitempty"`
-	TemplateTags []TemplateTag `json:"template-tags,omitempty"`
-}
-
 type CardResponse struct {
 	Archived        bool   `json:"archived"`
 	CanWrite        bool   `json:"can_write"`
@@ -136,14 +125,14 @@ type CardResponse struct {
 	Id              int    `json:"id"`
 	Display         string `json:"display"`
 	Description     string `json:"description"`
-	DatasetQuery    query  `json:"dataset_query"`
+	DatasetQuery    Query  `json:"dataset_query"`
 }
 
 type postQuery struct {
 	Name                  string            `json:"name"`
 	Display               string            `json:"display"`
 	VisualizationSettings map[string]string `json:"visualization_settings"`
-	DatasetQuery          query             `json:"dataset_query"`
+	DatasetQuery          Query             `json:"dataset_query"`
 	Description           string            `json:"description,omitempty"`
 }
 
@@ -151,8 +140,28 @@ type putQuery struct {
 	Name                  string            `json:"name,omitempty"`
 	Display               string            `json:"display,omitempty"`
 	VisualizationSettings map[string]string `json:"visualization_settings,omitempty"`
-	DatasetQuery          query             `json:"dataset_query,omitempty"`
+	DatasetQuery          Query             `json:"dataset_query,omitempty"`
 	Description           string            `json:"description,omitempty"`
+}
+
+type TemplateTag struct {
+	Id          string `json:"id"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	DisplayName string `json:"display_name"`
+	Required    bool   `json:"required"`
+	Default     string `json:"default"`
+}
+
+type Query struct {
+	Type     string      `json:"type,omitempty"`
+	Database int         `json:"database,omitempty"`
+	Native   NativeQuery `json:"native,omitempty"`
+}
+
+type NativeQuery struct {
+	Query        string                 `json:"query,omitempty"`
+	TemplateTags map[string]TemplateTag `json:"template-tags,omitempty"`
 }
 
 func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
@@ -164,13 +173,15 @@ func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface
 
 	query := postQuery{
 		Name:                  d.Get("name").(string),
-		Display:               d.Get("table").(string),
+		Display:               d.Get("display").(string),
 		VisualizationSettings: map[string]string{},
-		DatasetQuery: query{
-			Type:         d.Get("query_type").(string),
-			Database:     15,
-			Query:        d.Get("query").(string),
-			TemplateTags: make([]TemplateTag, 0),
+		DatasetQuery: Query{
+			Type:     d.Get("query_type").(string),
+			Database: 15,
+			Native: NativeQuery{
+				Query:        d.Get("query").(string),
+				TemplateTags: extractTags(d),
+			},
 		},
 		Description: d.Get("description").(string),
 	}
@@ -249,10 +260,11 @@ func resourceUpdateCard(ctx context.Context, d *schema.ResourceData, m interface
 	if d.HasChange("description") {
 		query.Description = d.Get("description").(string)
 	}
-	if d.HasChange("query_type") || d.HasChange("query") {
+	if d.HasChange("query_type") || d.HasChange("query") || d.HasChange("variables") {
 		query.DatasetQuery.Type = d.Get("query_type").(string)
-		query.DatasetQuery.Query = d.Get("query").(string)
+		query.DatasetQuery.Native.Query = d.Get("query").(string)
 		query.DatasetQuery.Database = 15
+		query.DatasetQuery.Native.TemplateTags = extractTags(d)
 	}
 	print("built query\n")
 
@@ -317,6 +329,26 @@ func updateResourceFromCard(card CardResponse, d *schema.ResourceData) {
 	d.Set("name", card.Name)
 	d.Set("description", card.Description)
 	d.Set("display", card.Display)
-	d.Set("query", card.DatasetQuery.Query)
+	d.Set("query", card.DatasetQuery.Native.Query)
 	d.Set("query_type", card.DatasetQuery.Type)
+}
+
+func extractTags(d *schema.ResourceData) map[string]TemplateTag {
+	variables := d.Get("variables").([]interface{})
+	tags := make(map[string]TemplateTag)
+	for _, variable := range variables {
+		i := variable.(map[string]interface{})
+		name := i["name"].(string)
+
+		tag := TemplateTag{
+			Id:          i["id"].(string),
+			Name:        name,
+			Type:        i["type"].(string),
+			DisplayName: i["display_name"].(string),
+			Required:    i["required"].(bool),
+			Default:     i["default"].(string),
+		}
+		tags[name] = tag
+	}
+	return tags
 }
