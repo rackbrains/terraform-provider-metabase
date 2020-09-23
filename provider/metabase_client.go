@@ -15,6 +15,8 @@ type putQuery struct {
 	DatasetQuery          *Query            `json:"dataset_query,omitempty"`
 	Description           string            `json:"description,omitempty"`
 	CollectionId          int               `json:"collection_id,omitempty"`
+	EnableEmbedding       bool              `json:"enable_embedding,omitempty"`
+	EmbeddingParams       map[string]string `json:"embedding_params,omitempty"`
 }
 
 type MetabaseClient struct {

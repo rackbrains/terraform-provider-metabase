@@ -50,6 +50,11 @@ func resourceCard() *schema.Resource {
 				Optional: true,
 				Default:  "table",
 			},
+			"enable_embedding": &schema.Schema{
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
 			"variables": &schema.Schema{
 				Type:     schema.TypeList,
 				Optional: true,
@@ -196,7 +201,18 @@ func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface
 	json.Unmarshal(body, &res)
 	updateResourceFromCard(res, d)
 
-	//todo update enable_embedding and embedding_params
+	// update enable_embedding and embedding_params
+
+	updateQuery := putQuery{
+		EnableEmbedding: d.Get("enable_embedding").(bool),
+		EmbeddingParams: extractEmbeddingParams(d),
+	}
+	resUpdate, err := c.updateCard(d.Id(), updateQuery)
+	if err != nil {
+		print("request failed")
+		return diag.FromErr(err)
+	}
+	updateResourceFromCard(*resUpdate, d)
 
 	return diags
 }
@@ -243,15 +259,25 @@ func resourceUpdateCard(ctx context.Context, d *schema.ResourceData, m interface
 		query.Description = d.Get("description").(string)
 	}
 	if d.HasChange("query_type") || d.HasChange("query") || d.HasChange("variables") {
-		query.DatasetQuery.Type = d.Get("query_type").(string)
-		query.DatasetQuery.Native.Query = d.Get("query").(string)
-		query.DatasetQuery.Database = 15
-		query.DatasetQuery.Native.TemplateTags = extractTags(d)
+		query.DatasetQuery = &Query{
+			Type:     d.Get("query_type").(string),
+			Database: 15,
+			Native: NativeQuery{
+				Query:        d.Get("query").(string),
+				TemplateTags: extractTags(d),
+			},
+		}
+
+		query.EmbeddingParams = extractEmbeddingParams(d)
 	} else {
 		query.DatasetQuery = nil
+		query.EmbeddingParams = nil
 	}
 	if d.HasChange("collection_id") {
 		query.CollectionId = d.Get("collection_id").(int)
+	}
+	if d.HasChange("enable_embedding") {
+		query.EnableEmbedding = d.Get("enable_embedding").(bool)
 	}
 	print("built query\n")
 
@@ -294,6 +320,7 @@ func updateResourceFromCard(card CardResponse, d *schema.ResourceData) {
 	d.Set("query", card.DatasetQuery.Native.Query)
 	d.Set("query_type", card.DatasetQuery.Type)
 	d.Set("collection_id", card.CollectionId)
+	d.Set("enable_embedding", card.EnableEmbedding)
 }
 
 func extractTags(d *schema.ResourceData) map[string]TemplateTag {
@@ -314,4 +341,17 @@ func extractTags(d *schema.ResourceData) map[string]TemplateTag {
 		tags[name] = tag
 	}
 	return tags
+}
+
+func extractEmbeddingParams(d *schema.ResourceData) map[string]string {
+	variables := d.Get("variables").([]interface{})
+	embeddingParams := make(map[string]string)
+	for _, variable := range variables {
+		i := variable.(map[string]interface{})
+		name := i["name"].(string)
+		if val, ok := i["embedding_param"]; ok {
+			embeddingParams[name] = val.(string)
+		}
+	}
+	return embeddingParams
 }
