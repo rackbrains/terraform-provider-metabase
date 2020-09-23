@@ -17,6 +17,7 @@ type putQuery struct {
 	CollectionId          int               `json:"collection_id,omitempty"`
 	EnableEmbedding       bool              `json:"enable_embedding,omitempty"`
 	EmbeddingParams       map[string]string `json:"embedding_params,omitempty"`
+	Archived              bool              `json:"archived,omitempty"`
 }
 
 type MetabaseClient struct {

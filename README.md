@@ -1,12 +1,14 @@
 # terraform-provider-metabase
 
+## Deploy
+
 Build and deploy locally using
 
 ```bash
 make
 ```
 
-Use in terraform template using
+## Example usage
 
 ```tf
 terraform {
@@ -49,4 +51,12 @@ resource "metabase_card" "test" {
     embedding_param = "locked"
   }
 }
+```
+
+## Import
+
+Import using card id.
+
+```bash
+terraform import metabase_card.test 1243
 ```

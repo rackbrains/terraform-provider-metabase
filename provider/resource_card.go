@@ -31,11 +31,6 @@ func resourceCard() *schema.Resource {
 				Optional:    true,
 				Description: "value may be nil, or if non-nil, value must be an integer greater than zero.",
 			},
-			// "collection_position": &schema.Schema{
-			// 	Type:        schema.TypeInt,
-			// Optional:    true,
-			// 	Description: "value may be nil, or if non-nil, value must be an integer greater than zero.",
-			// },
 			"query": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
@@ -104,15 +99,14 @@ func resourceCard() *schema.Resource {
 		UpdateContext: resourceUpdateCard,
 		DeleteContext: resourceDeleteCard,
 		// Exists:        resourceExistsCard,
-		// Importer: &schema.ResourceImporter{
-		// 	State: schema.ImportStatePassthrough,
-		// },
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 	}
 }
 
 type CardResponse struct {
-	// Archived        bool   `json:"archived"`
-	// CanWrite        bool   `json:"can_write"`
+	Archived        bool   `json:"archived"`
 	EnableEmbedding bool   `json:"enable_embedding"`
 	Name            string `json:"name"`
 	Id              int    `json:"id"`
