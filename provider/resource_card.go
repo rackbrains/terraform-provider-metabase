@@ -78,8 +78,8 @@ func resourceCard() *schema.Resource {
 }
 
 type query struct {
-	Type     string `json:"type"`
-	Database int    `json:"database"`
+	Type     string `json:"type,omitempty"`
+	Database int    `json:"database,omitempty"`
 }
 
 type CardResponse struct {
@@ -92,10 +92,10 @@ type CardResponse struct {
 }
 
 type postQuery struct {
-	Name                  string            `json:"name"`
-	Display               string            `json:"display"`
-	VisualizationSettings map[string]string `json:"visualization_settings"`
-	DatasetQuery          query             `json:"dataset_query"`
+	Name                  string            `json:"name,omitempty"`
+	Display               string            `json:"display,omitempty"`
+	VisualizationSettings map[string]string `json:"visualization_settings,omitempty"`
+	DatasetQuery          query             `json:"dataset_query,omitempty"`
 }
 
 func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
@@ -174,7 +174,48 @@ func resourceReadCard(ctx context.Context, d *schema.ResourceData, m interface{}
 
 func resourceUpdateCard(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	print("resourceUpdateCard\n")
-	return nil
+	c := m.(Client)
+	print("got client\n")
+	var diags diag.Diagnostics
+	print("init diags\n")
+
+	query := postQuery{}
+	if d.HasChange("name") {
+		query.Name = d.Get("name").(string)
+	}
+	print("built query\n")
+
+	queryJson, err := json.Marshal(query)
+	if err != nil {
+		print("json creation failed\n")
+		return diag.FromErr(err)
+	}
+	print(string(queryJson), "\n")
+
+	client := &http.Client{}
+	print("init http client\n")
+	url := c.host + "/api/card/" + d.Id()
+	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(queryJson))
+	req.Header.Add("Content-Type", `application/json`)
+	req.Header.Add("X-Metabase-Session", c.id)
+	resp, err := client.Do(req)
+	print("performed request\n")
+	if err != nil {
+		print("request failed")
+		return diag.FromErr(err)
+	}
+	if resp.StatusCode >= 400 {
+		print("request failed with status", resp.StatusCode, "\n")
+		return diag.Errorf("Update Request failed")
+	}
+	print("request succeeded\n")
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	print(string(body), "\n")
+	res := CardResponse{}
+	json.Unmarshal(body, &res)
+	updateResourceFromCard(res, d)
+	return diags
 }
 
 func resourceDeleteCard(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
