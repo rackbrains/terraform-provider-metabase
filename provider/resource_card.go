@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -123,15 +122,6 @@ type postQuery struct {
 	CollectionId          int               `json:"collection_id,omitempty"`
 }
 
-type putQuery struct {
-	Name                  string            `json:"name,omitempty"`
-	Display               string            `json:"display,omitempty"`
-	VisualizationSettings map[string]string `json:"visualization_settings,omitempty"`
-	DatasetQuery          *Query            `json:"dataset_query,omitempty"`
-	Description           string            `json:"description,omitempty"`
-	CollectionId          int               `json:"collection_id,omitempty"`
-}
-
 type TemplateTag struct {
 	Id          string `json:"id"`
 	Name        string `json:"name"`
@@ -154,7 +144,7 @@ type NativeQuery struct {
 
 func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	print("resourceCreateCard\n")
-	c := m.(Client)
+	c := m.(MetabaseClient)
 	print("got client\n")
 	var diags diag.Diagnostics
 	print("init diags\n")
@@ -212,7 +202,7 @@ func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface
 }
 
 func resourceReadCard(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	c := m.(Client)
+	c := m.(MetabaseClient)
 
 	print("resourceReadCard\n")
 	var diags diag.Diagnostics
@@ -240,7 +230,7 @@ func resourceReadCard(ctx context.Context, d *schema.ResourceData, m interface{}
 
 func resourceUpdateCard(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	print("resourceUpdateCard\n")
-	c := m.(Client)
+	c := m.(MetabaseClient)
 	print("got client\n")
 	var diags diag.Diagnostics
 	print("init diags\n")
@@ -265,7 +255,7 @@ func resourceUpdateCard(ctx context.Context, d *schema.ResourceData, m interface
 	}
 	print("built query\n")
 
-	res, err := updateCard(c, d.Id(), query)
+	res, err := c.updateCard(d.Id(), query)
 	if err != nil {
 		print("error while updating card")
 		return diag.FromErr(err)
@@ -275,7 +265,7 @@ func resourceUpdateCard(ctx context.Context, d *schema.ResourceData, m interface
 }
 
 func resourceDeleteCard(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	c := m.(Client)
+	c := m.(MetabaseClient)
 	print("resourceReadCard\n")
 	var diags diag.Diagnostics
 	client := &http.Client{}
@@ -324,38 +314,4 @@ func extractTags(d *schema.ResourceData) map[string]TemplateTag {
 		tags[name] = tag
 	}
 	return tags
-}
-
-func updateCard(c Client, id string, query putQuery) (*CardResponse, error) {
-	queryJson, err := json.Marshal(query)
-	if err != nil {
-		print("json creation failed\n")
-		return nil, err
-	}
-	print(string(queryJson), "\n")
-
-	client := &http.Client{}
-	print("init http client\n")
-	url := c.host + "/api/card/" + id
-	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(queryJson))
-	req.Header.Add("Content-Type", `application/json`)
-	req.Header.Add("X-Metabase-Session", c.id)
-	resp, err := client.Do(req)
-	print("performed request\n")
-	if err != nil {
-		print("request failed\n")
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
-
-	if resp.StatusCode >= 400 {
-		print("request failed with status", resp.StatusCode, "\n")
-		return nil, errors.New("Update Request failed " + string(body))
-	}
-	print("request succeeded\n")
-	print(string(body), "\n")
-	res := CardResponse{}
-	json.Unmarshal(body, &res)
-	return &res, nil
 }

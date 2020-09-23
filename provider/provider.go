@@ -45,11 +45,6 @@ type authResponse struct {
 	Id string `json:"id"`
 }
 
-type Client struct {
-	host string
-	id   string
-}
-
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 	print("provider initialization\n")
 	var diags diag.Diagnostics
@@ -91,7 +86,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	}
 	response := authResponse{}
 	json.Unmarshal(body, &response)
-	res := Client{
+	res := MetabaseClient{
 		host: host,
 		id:   response.Id,
 	}
