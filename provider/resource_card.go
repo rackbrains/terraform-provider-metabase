@@ -125,6 +125,12 @@ func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface
 	}
 	print("built query\n")
 
+	//build update query before overriding it with postCard results
+	updateQuery := putQuery{
+		EnableEmbedding: d.Get("enable_embedding").(bool),
+		EmbeddingParams: extractEmbeddingParams(d),
+	}
+
 	card, err := c.postCard(query)
 	if err != nil {
 		print("card creation failed\n")
@@ -133,10 +139,6 @@ func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface
 	updateResourceFromCard(*card, d)
 
 	// update enable_embedding and embedding_params
-	updateQuery := putQuery{
-		EnableEmbedding: d.Get("enable_embedding").(bool),
-		EmbeddingParams: extractEmbeddingParams(d),
-	}
 	resUpdate, err := c.updateCard(d.Id(), updateQuery)
 	if err != nil {
 		print("card update failed")
