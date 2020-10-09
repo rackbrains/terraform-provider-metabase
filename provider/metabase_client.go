@@ -8,6 +8,13 @@ import (
 	"net/http"
 )
 
+type MetabaseClientInterface interface {
+	updateCard(id string, query putQuery) (*CardResponse, error)
+	postCard(query postQuery) (*CardResponse, error)
+	getCard(id string) (*CardResponse, error)
+	deleteCard(id string) error
+}
+
 type MetabaseClient struct {
 	host   string
 	id     string

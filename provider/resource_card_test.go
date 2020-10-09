@@ -1,8 +1,10 @@
 package provider
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,37 +26,32 @@ func TestUpdateResourceFromCard(t *testing.T) {
 	assert.Equal(t, resource.Get("query").(string), card.DatasetQuery.Native.Query)
 }
 
-// func TestAccItem_Basic(t *testing.T) {
-// 	resource.Test(t, resource.TestCase{
-// 		// PreCheck:     func() { testAccPreCheck(t) },
-// 		Providers: metabaseAccProviders,
-// 		// CheckDestroy: testAccCheckItemDestroy,
-// 		Steps: []resource.TestStep{
-// 			{
-// 				Config: testAccCheckItemBasic(),
-// 				Check: resource.ComposeTestCheckFunc(
-// 					// testAccCheckExampleItemExists("example_item.test_item"),
-// 					resource.TestCheckResourceAttr(
-// 						"example_item.test_item", "name", "test"),
-// 					resource.TestCheckResourceAttr(
-// 						"example_item.test_item", "description", "hello"),
-// 					resource.TestCheckResourceAttr(
-// 						"example_item.test_item", "tags.#", "2"),
-// 					resource.TestCheckResourceAttr("example_item.test_item", "tags.1931743815", "tag1"),
-// 					resource.TestCheckResourceAttr("example_item.test_item", "tags.1477001604", "tag2"),
-// 				),
-// 			},
-// 		},
-// 	})
-// }
+func TestMetabaseCard_Basic(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		// PreCheck:     func() { testAccPreCheck(t) },
+		Providers: metabaseAccProviders,
+		// CheckDestroy: testAccCheckItemDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: metabaseAccCheckCardBasic(),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"metabase_card.test_item", "name", "test"),
+					resource.TestCheckResourceAttr(
+						"metabase_card.test_item", "description", "hello"),
+				),
+			},
+		},
+	})
+}
 
-// func testAccCheckItemBasic() string {
-// 	return fmt.Sprintf(`
-// resource "metabase_card" "test_item" {
-//   name        = "test"
-// 	description = "hello"
-// 	query ="SELECT * from nico"
-// 	connection_id = 23
-// }
-// `)
-// }
+func metabaseAccCheckCardBasic() string {
+	return fmt.Sprintf(`
+resource "metabase_card" "test_item" {
+  name        = "test"
+	description = "hello"
+	query ="SELECT * from nico"
+	connection_id = 23
+}
+`)
+}
