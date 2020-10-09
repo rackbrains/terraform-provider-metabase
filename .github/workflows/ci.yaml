@@ -1,4 +1,4 @@
-name: Metabase terrafiorm provider CI
+name: Metabase terraform provider CI
 
 on:
   push:
