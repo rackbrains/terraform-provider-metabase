@@ -103,10 +103,10 @@ func resourceCard() *schema.Resource {
 
 func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	print("resourceCreateCard\n")
-	c := m.(MetabaseClient)
-	print("got client\n")
+	c := m.(MetabaseClientInterface)
+	print("resourceCreateCard::got client\n")
 	var diags diag.Diagnostics
-	print("init diags\n")
+	print("resourceCreateCard::init diags\n")
 
 	query := postQuery{
 		Name:                  d.Get("name").(string),
@@ -123,7 +123,7 @@ func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface
 		Description:  d.Get("description").(string),
 		CollectionId: d.Get("collection_id").(int),
 	}
-	print("built query\n")
+	print("resourceCreateCard::built query\n")
 
 	//build update query before overriding it with postCard results
 	updateQuery := putQuery{
@@ -150,7 +150,7 @@ func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface
 }
 
 func resourceReadCard(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	c := m.(MetabaseClient)
+	c := m.(MetabaseClientInterface)
 
 	print("resourceReadCard\n")
 	var diags diag.Diagnostics
@@ -165,7 +165,7 @@ func resourceReadCard(ctx context.Context, d *schema.ResourceData, m interface{}
 
 func resourceUpdateCard(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	print("resourceUpdateCard\n")
-	c := m.(MetabaseClient)
+	c := m.(MetabaseClientInterface)
 	print("got client\n")
 	var diags diag.Diagnostics
 	print("init diags\n")
@@ -210,22 +210,22 @@ func resourceUpdateCard(ctx context.Context, d *schema.ResourceData, m interface
 }
 
 func resourceDeleteCard(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	c := m.(MetabaseClient)
-	print("resourceReadCard\n")
+	c := m.(MetabaseClientInterface)
+	print("resourceDeleteCard\n")
 	var diags diag.Diagnostics
 	err := c.deleteCard(d.Id())
 	if err != nil {
-		print("request failed\n")
+		print("deletion failed\n")
 		return diag.FromErr(err)
 	}
-	print("request succeeded\n")
+	print("deletion succeeded\n")
 
 	d.SetId("")
 	return diags
 }
 
 func updateResourceFromCard(card CardResponse, d *schema.ResourceData) {
-	print("updateResourceFromCard ", card.Id, " ", card.Name, "\n")
+	print("updateResourceFromCard Id:", card.Id, ", name:", card.Name, "\n")
 	d.SetId(fmt.Sprint(card.Id))
 	d.Set("name", card.Name)
 	d.Set("description", card.Description)
