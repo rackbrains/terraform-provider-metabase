@@ -1,11 +1,7 @@
 package provider
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"io/ioutil"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -37,14 +33,6 @@ func Provider() *schema.Provider {
 	}
 }
 
-type authRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-type authResponse struct {
-	Id string `json:"id"`
-}
-
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 	print("provider initialization\n")
 	var diags diag.Diagnostics
@@ -52,44 +40,12 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	password := d.Get("password").(string)
 	host := d.Get("host").(string)
 
-	query := authRequest{
-		Username: username,
-		Password: password,
-	}
-	queryJson, err := json.Marshal(query)
+	client, err := GetMetabaseClient(host, username, password)
 
-	httpClient := &http.Client{}
-	url := host + "/api/session"
-	print("Getting session @ ", url, "\n")
-	print("Getting session payload ", string(queryJson), "\n")
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(queryJson))
 	if err != nil {
-		print("request creation failed\n")
+		print("client initialization failed\n")
 		return nil, diag.FromErr(err)
-	}
-	req.Header.Add("Content-Type", `application/json`)
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		print("request failed\n")
-		return nil, diag.FromErr(err)
-	}
-	if resp.StatusCode >= 400 {
-		print("request failed with status", resp.StatusCode, "\n")
-		return nil, diag.Errorf("Could not initialize session with metabase")
-	}
-	print("request succeeded\n")
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		print("response reading failed\n")
-		return nil, diag.FromErr(err)
-	}
-	response := authResponse{}
-	json.Unmarshal(body, &response)
-	res := MetabaseClient{
-		host: host,
-		id:   response.Id,
 	}
 
-	return res, diags
+	return *client, diags
 }

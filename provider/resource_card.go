@@ -1,12 +1,8 @@
 package provider
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -105,46 +101,6 @@ func resourceCard() *schema.Resource {
 	}
 }
 
-type CardResponse struct {
-	Archived        bool   `json:"archived"`
-	EnableEmbedding bool   `json:"enable_embedding"`
-	Name            string `json:"name"`
-	Id              int    `json:"id"`
-	Display         string `json:"display"`
-	Description     string `json:"description"`
-	DatasetQuery    Query  `json:"dataset_query"`
-	CollectionId    int    `json:"collection_id,omitempty"`
-}
-
-type postQuery struct {
-	Name                  string            `json:"name"`
-	Display               string            `json:"display"`
-	VisualizationSettings map[string]string `json:"visualization_settings"`
-	DatasetQuery          Query             `json:"dataset_query"`
-	Description           string            `json:"description,omitempty"`
-	CollectionId          int               `json:"collection_id,omitempty"`
-}
-
-type TemplateTag struct {
-	Id          string `json:"id"`
-	Name        string `json:"name"`
-	Type        string `json:"type"`
-	DisplayName string `json:"display_name"`
-	Required    bool   `json:"required"`
-	Default     string `json:"default"`
-}
-
-type Query struct {
-	Type     string      `json:"type,omitempty"`
-	Database int         `json:"database,omitempty"`
-	Native   NativeQuery `json:"native,omitempty"`
-}
-
-type NativeQuery struct {
-	Query        string                 `json:"query,omitempty"`
-	TemplateTags map[string]TemplateTag `json:"template-tags,omitempty"`
-}
-
 func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	print("resourceCreateCard\n")
 	c := m.(MetabaseClient)
@@ -169,45 +125,23 @@ func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface
 	}
 	print("built query\n")
 
-	queryJson, err := json.Marshal(query)
-	if err != nil {
-		print("json creation failed\n")
-		return diag.FromErr(err)
-	}
-	print(string(queryJson), "\n")
-
-	client := &http.Client{}
-	print("init http client\n")
-	req, _ := http.NewRequest("POST", c.host+"/api/card", bytes.NewBuffer(queryJson))
-	req.Header.Add("Content-Type", `application/json`)
-	req.Header.Add("X-Metabase-Session", c.id)
-	resp, err := client.Do(req)
-	print("performed request\n")
-	if err != nil {
-		print("request failed")
-		return diag.FromErr(err)
-	}
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
-	if resp.StatusCode >= 400 {
-		print("request failed with status", resp.StatusCode, "\n")
-		return diag.Errorf("Request failed: " + string(body))
-	}
-	print("request succeeded\n")
-	print(string(body), "\n")
-	res := CardResponse{}
-	json.Unmarshal(body, &res)
-	updateResourceFromCard(res, d)
-
-	// update enable_embedding and embedding_params
-
+	//build update query before overriding it with postCard results
 	updateQuery := putQuery{
 		EnableEmbedding: d.Get("enable_embedding").(bool),
 		EmbeddingParams: extractEmbeddingParams(d),
 	}
+
+	card, err := c.postCard(query)
+	if err != nil {
+		print("card creation failed\n")
+		return diag.FromErr(err)
+	}
+	updateResourceFromCard(*card, d)
+
+	// update enable_embedding and embedding_params
 	resUpdate, err := c.updateCard(d.Id(), updateQuery)
 	if err != nil {
-		print("request failed")
+		print("card update failed")
 		return diag.FromErr(err)
 	}
 	updateResourceFromCard(*resUpdate, d)
@@ -220,25 +154,12 @@ func resourceReadCard(ctx context.Context, d *schema.ResourceData, m interface{}
 
 	print("resourceReadCard\n")
 	var diags diag.Diagnostics
-	client := &http.Client{}
-	url := c.host + "/api/card/" + d.Id()
-	print("Getting card @ ", url, "\n")
-	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Add("Content-Type", `application/json`)
-	req.Header.Add("X-Metabase-Session", c.id)
-	resp, err := client.Do(req)
-	print("performed request\n")
+	card, err := c.getCard(d.Id())
 	if err != nil {
 		print("request failed\n")
 		return diag.FromErr(err)
 	}
-	print("request succeeded\n")
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	print(string(body), "\n")
-	res := CardResponse{}
-	json.Unmarshal(body, &res)
-	updateResourceFromCard(res, d)
+	updateResourceFromCard(*card, d)
 	return diags
 }
 
@@ -292,13 +213,7 @@ func resourceDeleteCard(ctx context.Context, d *schema.ResourceData, m interface
 	c := m.(MetabaseClient)
 	print("resourceReadCard\n")
 	var diags diag.Diagnostics
-	client := &http.Client{}
-	url := c.host + "/api/card/" + d.Id()
-	print("Deleting card @ ", url, "\n")
-	req, _ := http.NewRequest("DELETE", url, nil)
-	req.Header.Add("X-Metabase-Session", c.id)
-	_, err := client.Do(req)
-	print("performed request\n")
+	err := c.deleteCard(d.Id())
 	if err != nil {
 		print("request failed\n")
 		return diag.FromErr(err)
