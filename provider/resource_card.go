@@ -139,7 +139,7 @@ func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface
 	}
 	resUpdate, err := c.updateCard(d.Id(), updateQuery)
 	if err != nil {
-		print("request failed")
+		print("card update failed")
 		return diag.FromErr(err)
 	}
 	updateResourceFromCard(*resUpdate, d)

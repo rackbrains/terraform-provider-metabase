@@ -47,5 +47,5 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		return nil, diag.FromErr(err)
 	}
 
-	return client, diags
+	return *client, diags
 }
