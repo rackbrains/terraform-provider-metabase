@@ -225,7 +225,7 @@ func resourceDeleteCard(ctx context.Context, d *schema.ResourceData, m interface
 }
 
 func updateResourceFromCard(card CardResponse, d *schema.ResourceData) {
-	print("updateResourceFromCard ", card.Id, " ", card.Name, "\n")
+	print("updateResourceFromCard Id:", card.Id, ", name:", card.Name, "\n")
 	d.SetId(fmt.Sprint(card.Id))
 	d.Set("name", card.Name)
 	d.Set("description", card.Description)
