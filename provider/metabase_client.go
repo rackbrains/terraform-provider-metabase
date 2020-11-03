@@ -38,7 +38,7 @@ type TemplateTag struct {
 	Type        string `json:"type"`
 	DisplayName string `json:"display_name"`
 	Required    bool   `json:"required"`
-	Default     string `json:"default"`
+	Default     string `json:"default,omitempty"`
 }
 
 type Query struct {
