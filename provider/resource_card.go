@@ -235,7 +235,27 @@ func updateResourceFromCard(card CardResponse, d *schema.ResourceData) {
 	d.Set("collection_id", card.CollectionId)
 	d.Set("enable_embedding", card.EnableEmbedding)
 
-	//todo properly read params list
+	updateVariablesFromTags(card.DatasetQuery.Native.TemplateTags, card.EmbeddingParams, d)
+}
+
+func updateVariablesFromTags(tags map[string]TemplateTag, embedding map[string]string, d *schema.ResourceData) error {
+	var ois []interface{}
+	for _, element := range tags {
+		oi := make(map[string]interface{})
+		oi["default"] = element.Default
+		oi["display_name"] = element.DisplayName
+		oi["id"] = element.Id
+		oi["name"] = element.Name
+		oi["required"] = element.Required
+		oi["type"] = element.Type
+		oi["embedding_param"] = embedding[element.Name]
+
+		ois = append(ois, oi)
+	}
+
+	d.Set("variables", ois)
+
+	return nil
 }
 
 func extractTags(d *schema.ResourceData) map[string]TemplateTag {
