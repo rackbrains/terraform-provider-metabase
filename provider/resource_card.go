@@ -108,7 +108,7 @@ func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface
 	var diags diag.Diagnostics
 	print("resourceCreateCard::init diags\n")
 
-	query := postQuery{
+	query := postCardQuery{
 		Name:                  d.Get("name").(string),
 		Display:               d.Get("display").(string),
 		VisualizationSettings: map[string]string{},
@@ -126,7 +126,7 @@ func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface
 	print("resourceCreateCard::built query\n")
 
 	//build update query before overriding it with postCard results
-	updateQuery := putQuery{
+	updateQuery := putCardQuery{
 		EnableEmbedding: d.Get("enable_embedding").(bool),
 		EmbeddingParams: extractEmbeddingParams(d),
 	}
@@ -170,7 +170,7 @@ func resourceUpdateCard(ctx context.Context, d *schema.ResourceData, m interface
 	var diags diag.Diagnostics
 	print("init diags\n")
 
-	query := putQuery{}
+	query := putCardQuery{}
 	if d.HasChange("name") {
 		query.Name = d.Get("name").(string)
 	}

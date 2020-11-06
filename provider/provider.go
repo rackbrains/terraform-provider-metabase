@@ -27,7 +27,8 @@ func Provider() *schema.Provider {
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
-			"metabase_card": resourceCard(),
+			"metabase_card":       resourceCard(),
+			"metabase_collection": resourceCollection(),
 		},
 		ConfigureContextFunc: providerConfigure,
 	}
