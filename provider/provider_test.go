@@ -54,3 +54,12 @@ func (c MetabaseClientMock) getCard(id string) (*CardResponse, error) {
 func (c MetabaseClientMock) deleteCard(id string) error {
 	return nil
 }
+func (c MetabaseClientMock) createCollection(query PostCollectionQuery) (*CollectionResponse, error) {
+	return nil, nil
+}
+func (c MetabaseClientMock) getCollection(id string) (*CollectionResponse, error) {
+	return nil, nil
+}
+func (c MetabaseClientMock) updateCollection(id string, query PutCollectionQuery) (*CollectionResponse, error) {
+	return nil, nil
+}
