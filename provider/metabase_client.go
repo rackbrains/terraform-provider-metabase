@@ -87,21 +87,22 @@ func (c MetabaseClient) httpClient() *http.Client {
 // Card
 //--------------------------------------------------------------------------------------------------
 type CardResponse struct {
-	Archived        bool   `json:"archived"`
-	EnableEmbedding bool   `json:"enable_embedding"`
-	Name            string `json:"name"`
-	Id              int    `json:"id"`
-	Display         string `json:"display"`
-	Description     string `json:"description"`
-	DatasetQuery    Query  `json:"dataset_query"`
-	CollectionId    int    `json:"collection_id,omitempty"`
+	Archived        bool              `json:"archived"`
+	EnableEmbedding bool              `json:"enable_embedding"`
+	Name            string            `json:"name"`
+	Id              int               `json:"id"`
+	Display         string            `json:"display"`
+	Description     string            `json:"description"`
+	DatasetQuery    Query             `json:"dataset_query"`
+	CollectionId    int               `json:"collection_id,omitempty"`
+	EmbeddingParams map[string]string `json:"embedding_params,omitempty"`
 }
 
 type TemplateTag struct {
 	Id          string `json:"id"`
 	Name        string `json:"name"`
 	Type        string `json:"type"`
-	DisplayName string `json:"display_name"`
+	DisplayName string `json:"display-name"`
 	Required    bool   `json:"required"`
 	Default     string `json:"default,omitempty"`
 }
