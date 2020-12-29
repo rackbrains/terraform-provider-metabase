@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -51,7 +52,7 @@ func resourceCard() *schema.Resource {
 				Required: true,
 			},
 			"variables": &schema.Schema{
-				Type:     schema.TypeList,
+				Type:     schema.TypeSet,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -102,11 +103,11 @@ func resourceCard() *schema.Resource {
 }
 
 func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	print("resourceCreateCard\n")
+	log.Printf("resourceCreateCard\n")
 	c := m.(MetabaseClientInterface)
-	print("resourceCreateCard::got client\n")
+	log.Printf("resourceCreateCard::got client\n")
 	var diags diag.Diagnostics
-	print("resourceCreateCard::init diags\n")
+	log.Printf("resourceCreateCard::init diags\n")
 
 	query := postQuery{
 		Name:                  d.Get("name").(string),
@@ -123,7 +124,7 @@ func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface
 		Description:  d.Get("description").(string),
 		CollectionId: d.Get("collection_id").(int),
 	}
-	print("resourceCreateCard::built query\n")
+	log.Printf("resourceCreateCard::built query\n")
 
 	//build update query before overriding it with postCard results
 	updateQuery := putQuery{
@@ -133,7 +134,7 @@ func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface
 
 	card, err := c.postCard(query)
 	if err != nil {
-		print("card creation failed\n")
+		log.Printf("card creation failed\n")
 		return diag.FromErr(err)
 	}
 	updateResourceFromCard(*card, d)
@@ -141,7 +142,7 @@ func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface
 	// update enable_embedding and embedding_params
 	resUpdate, err := c.updateCard(d.Id(), updateQuery)
 	if err != nil {
-		print("card update failed")
+		log.Printf("card update failed")
 		return diag.FromErr(err)
 	}
 	updateResourceFromCard(*resUpdate, d)
@@ -152,11 +153,11 @@ func resourceCreateCard(ctx context.Context, d *schema.ResourceData, m interface
 func resourceReadCard(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	c := m.(MetabaseClientInterface)
 
-	print("resourceReadCard\n")
+	log.Printf("resourceReadCard\n")
 	var diags diag.Diagnostics
 	card, err := c.getCard(d.Id())
 	if err != nil {
-		print("request failed\n")
+		log.Printf("request failed\n")
 		return diag.FromErr(err)
 	}
 	updateResourceFromCard(*card, d)
@@ -164,11 +165,11 @@ func resourceReadCard(ctx context.Context, d *schema.ResourceData, m interface{}
 }
 
 func resourceUpdateCard(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	print("resourceUpdateCard\n")
+	log.Printf("resourceUpdateCard\n")
 	c := m.(MetabaseClientInterface)
-	print("got client\n")
+	log.Printf("got client\n")
 	var diags diag.Diagnostics
-	print("init diags\n")
+	log.Printf("init diags\n")
 
 	query := putQuery{}
 	if d.HasChange("name") {
@@ -198,11 +199,11 @@ func resourceUpdateCard(ctx context.Context, d *schema.ResourceData, m interface
 	if d.HasChange("enable_embedding") {
 		query.EnableEmbedding = d.Get("enable_embedding").(bool)
 	}
-	print("built query\n")
+	log.Printf("built query\n")
 
 	res, err := c.updateCard(d.Id(), query)
 	if err != nil {
-		print("error while updating card")
+		log.Printf("error while updating card")
 		return diag.FromErr(err)
 	}
 	updateResourceFromCard(*res, d)
@@ -211,21 +212,21 @@ func resourceUpdateCard(ctx context.Context, d *schema.ResourceData, m interface
 
 func resourceDeleteCard(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	c := m.(MetabaseClientInterface)
-	print("resourceDeleteCard\n")
+	log.Printf("resourceDeleteCard\n")
 	var diags diag.Diagnostics
 	err := c.deleteCard(d.Id())
 	if err != nil {
-		print("deletion failed\n")
+		log.Printf("deletion failed\n")
 		return diag.FromErr(err)
 	}
-	print("deletion succeeded\n")
+	log.Printf("deletion succeeded\n")
 
 	d.SetId("")
 	return diags
 }
 
 func updateResourceFromCard(card CardResponse, d *schema.ResourceData) {
-	print("updateResourceFromCard Id:", card.Id, ", name:", card.Name, "\n")
+	log.Printf("updateResourceFromCard Id: %d name: %s", card.Id, card.Name)
 	d.SetId(fmt.Sprint(card.Id))
 	d.Set("name", card.Name)
 	d.Set("description", card.Description)
@@ -249,12 +250,9 @@ func updateVariablesFromTags(tags map[string]TemplateTag, embedding map[string]s
 		oi["required"] = element.Required
 		oi["type"] = element.Type
 		oi["embedding_param"] = embedding[element.Name]
-
 		ois = append(ois, oi)
 	}
-
 	d.Set("variables", ois)
-
 	return nil
 }
 
@@ -264,7 +262,6 @@ func extractTags(d *schema.ResourceData) map[string]TemplateTag {
 	for _, variable := range variables {
 		i := variable.(map[string]interface{})
 		name := i["name"].(string)
-
 		tag := TemplateTag{
 			Id:          i["id"].(string),
 			Name:        name,

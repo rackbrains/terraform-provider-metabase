@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"log"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -34,7 +35,7 @@ func Provider() *schema.Provider {
 }
 
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
-	print("provider initialization\n")
+	log.Printf("provider initialization\n")
 	var diags diag.Diagnostics
 	username := d.Get("username").(string)
 	password := d.Get("password").(string)
@@ -43,7 +44,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	client, err := GetMetabaseClient(host, username, password)
 
 	if err != nil {
-		print("client initialization failed\n")
+		log.Printf("client initialization failed\n")
 		return nil, diag.FromErr(err)
 	}
 
