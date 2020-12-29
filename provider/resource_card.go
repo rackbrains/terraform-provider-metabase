@@ -257,7 +257,7 @@ func updateVariablesFromTags(tags map[string]TemplateTag, embedding map[string]s
 }
 
 func extractTags(d *schema.ResourceData) map[string]TemplateTag {
-	variables := d.Get("variables").([]interface{})
+	variables := d.Get("variables").(*schema.Set).List()
 	tags := make(map[string]TemplateTag)
 	for _, variable := range variables {
 		i := variable.(map[string]interface{})
@@ -276,7 +276,7 @@ func extractTags(d *schema.ResourceData) map[string]TemplateTag {
 }
 
 func extractEmbeddingParams(d *schema.ResourceData) map[string]string {
-	variables := d.Get("variables").([]interface{})
+	variables := d.Get("variables").(*schema.Set).List()
 	embeddingParams := make(map[string]string)
 	for _, variable := range variables {
 		i := variable.(map[string]interface{})
