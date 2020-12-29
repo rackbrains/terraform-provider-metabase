@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
+	"log"
 	"net/http"
 )
 
@@ -41,7 +42,6 @@ type TemplateTag struct {
 	Required    bool   `json:"required"`
 	Default     string `json:"default,omitempty"`
 }
-
 type Query struct {
 	Type     string      `json:"type,omitempty"`
 	Database int         `json:"database,omitempty"`
@@ -68,31 +68,31 @@ type putQuery struct {
 func (c MetabaseClient) updateCard(id string, query putQuery) (*CardResponse, error) {
 	queryJson, err := json.Marshal(query)
 	if err != nil {
-		print("json creation failed\n")
+		log.Printf("json creation failed\n")
 		return nil, err
 	}
-	print(string(queryJson), "\n")
+	log.Printf("updateCard JSON: %s", string(queryJson))
 
-	print("init http client\n")
+	log.Printf("init http client\n")
 	url := c.host + "/api/card/" + id
 	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(queryJson))
 	req.Header.Add("Content-Type", `application/json`)
 	req.Header.Add("X-Metabase-Session", c.id)
 	resp, err := c.httpClient().Do(req)
-	print("performed request\n")
+	log.Printf("performed request: updateCard \n")
 	if err != nil {
-		print("request failed\n")
+		log.Printf("request failed\n")
 		return nil, err
 	}
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	if resp.StatusCode >= 400 {
-		print("request failed with status", resp.StatusCode, "\n")
+		log.Printf("request failed with status %d \n", resp.StatusCode)
 		return nil, errors.New("Update Request failed " + string(body))
 	}
-	print("request succeeded\n")
-	print(string(body), "\n")
+	log.Printf("updateCard request succeeded\n")
+	log.Printf("updateCard Response: %s", string(body))
 	res := CardResponse{}
 	json.Unmarshal(body, &res)
 	return &res, nil
@@ -115,28 +115,28 @@ func GetMetabaseClient(host string, username string, password string) (*Metabase
 
 	httpClient := &http.Client{}
 	url := host + "/api/session"
-	print("Getting session @ ", url, "\n")
-	print("Getting session payload ", string(queryJson), "\n")
+	log.Printf("Getting session @ %s", url)
+	log.Printf("Getting session payload %s", string(queryJson))
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(queryJson))
 	if err != nil {
-		print("request creation failed\n")
+		log.Printf("request creation failed\n")
 		return nil, err
 	}
 	req.Header.Add("Content-Type", `application/json`)
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		print("request failed\n")
+		log.Printf("request failed\n")
 		return nil, err
 	}
 	if resp.StatusCode >= 400 {
-		print("request failed with status", resp.StatusCode, "\n")
+		log.Printf("request failed with status %d", resp.StatusCode)
 		return nil, errors.New("Could not initialize session with metabase")
 	}
-	print("request succeeded\n")
+	log.Printf("GetMetabaseClient request succeeded\n")
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		print("response reading failed\n")
+		log.Printf("response reading failed\n")
 		return nil, err
 	}
 	response := authResponse{}
@@ -152,13 +152,13 @@ func GetMetabaseClient(host string, username string, password string) (*Metabase
 
 func (c MetabaseClient) deleteCard(id string) error {
 	url := c.host + "/api/card/" + id
-	print("Deleting card @ ", url, "\n")
+	log.Printf("Deleting card @ %s \n", url)
 	req, _ := http.NewRequest("DELETE", url, nil)
 	req.Header.Add("X-Metabase-Session", c.id)
 	_, err := c.httpClient().Do(req)
-	print("performed request\n")
+	log.Printf("performed request: deleteCard\n")
 	if err != nil {
-		print("request failed\n")
+		log.Printf("request failed\n")
 		return err
 	}
 	return nil
@@ -166,20 +166,20 @@ func (c MetabaseClient) deleteCard(id string) error {
 
 func (c MetabaseClient) getCard(id string) (*CardResponse, error) {
 	url := c.host + "/api/card/" + id
-	print("Getting card @ ", url, "\n")
+	log.Printf("Getting card @ %s \n", url)
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Add("Content-Type", `application/json`)
 	req.Header.Add("X-Metabase-Session", c.id)
 	resp, err := c.httpClient().Do(req)
-	print("performed request\n")
+	log.Printf("performed request getCard\n")
 	if err != nil {
-		print("request failed\n")
+		log.Printf("request failed\n")
 		return nil, err
 	}
-	print("request succeeded\n")
+	log.Printf("getCard request succeeded\n")
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	print(string(body), "\n")
+	log.Printf("getCard Response: %s", string(body))
 	res := CardResponse{}
 	json.Unmarshal(body, &res)
 	return &res, nil
@@ -197,29 +197,29 @@ type postQuery struct {
 func (c MetabaseClient) postCard(query postQuery) (*CardResponse, error) {
 	queryJson, err := json.Marshal(query)
 	if err != nil {
-		print("json creation failed\n")
+		log.Printf("json creation failed\n")
 		return nil, err
 	}
-	print(string(queryJson), "\n")
+	log.Printf("Post Card: %s", string(queryJson))
 
-	print("init http client\n")
+	log.Printf("init http client\n")
 	req, _ := http.NewRequest("POST", c.host+"/api/card", bytes.NewBuffer(queryJson))
 	req.Header.Add("Content-Type", `application/json`)
 	req.Header.Add("X-Metabase-Session", c.id)
 	resp, err := c.httpClient().Do(req)
-	print("performed request\n")
+	log.Printf("performed request postCard\n")
 	if err != nil {
-		print("request failed")
+		log.Printf("request failed")
 		return nil, err
 	}
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
 	if resp.StatusCode >= 400 {
-		print("request failed with status", resp.StatusCode, "\n")
+		log.Printf("request failed with status %d \n", resp.StatusCode)
 		return nil, errors.New("Request failed: " + string(body))
 	}
-	print("request succeeded\n")
-	print(string(body), "\n")
+	log.Printf("postCard request succeeded\n")
+	log.Printf("postCard Response: %s", string(body))
 	res := CardResponse{}
 	json.Unmarshal(body, &res)
 	return &res, nil
