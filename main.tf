@@ -38,3 +38,14 @@ resource "metabase_card" "test" {
     embedding_param = "locked"
   }
 }
+
+
+resource "metabase_database" "name" {
+  name     = "sentry"
+  engine   = "mysql"
+  user     = "value"
+  host     = "value"
+  db       = ""
+  port     = "value"
+  password = "value"
+}
