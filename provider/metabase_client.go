@@ -9,105 +9,8 @@ import (
 	"net/http"
 )
 
-type MetabaseClientInterface interface {
-	updateCard(id string, query putQuery) (*CardResponse, error)
-	postCard(query postQuery) (*CardResponse, error)
-	getCard(id string) (*CardResponse, error)
-	deleteCard(id string) error
-}
-
-type MetabaseClient struct {
-	host   string
-	id     string
-	client *http.Client
-}
-
-type CardResponse struct {
-	Archived        bool              `json:"archived"`
-	EnableEmbedding bool              `json:"enable_embedding"`
-	Name            string            `json:"name"`
-	Id              int               `json:"id"`
-	Display         string            `json:"display"`
-	Description     string            `json:"description"`
-	DatasetQuery    Query             `json:"dataset_query"`
-	CollectionId    int               `json:"collection_id,omitempty"`
-	EmbeddingParams map[string]string `json:"embedding_params,omitempty"`
-}
-
-type TemplateTag struct {
-	Id          string `json:"id"`
-	Name        string `json:"name"`
-	Type        string `json:"type"`
-	DisplayName string `json:"display-name"`
-	Required    bool   `json:"required"`
-	Default     string `json:"default,omitempty"`
-}
-type Query struct {
-	Type     string      `json:"type,omitempty"`
-	Database int         `json:"database,omitempty"`
-	Native   NativeQuery `json:"native,omitempty"`
-}
-
-type NativeQuery struct {
-	Query        string                 `json:"query,omitempty"`
-	TemplateTags map[string]TemplateTag `json:"template-tags,omitempty"`
-}
-
-type putQuery struct {
-	Name                  string            `json:"name,omitempty"`
-	Display               string            `json:"display,omitempty"`
-	VisualizationSettings map[string]string `json:"visualization_settings,omitempty"`
-	DatasetQuery          *Query            `json:"dataset_query,omitempty"`
-	Description           string            `json:"description,omitempty"`
-	CollectionId          int               `json:"collection_id,omitempty"`
-	EnableEmbedding       bool              `json:"enable_embedding,omitempty"`
-	EmbeddingParams       map[string]string `json:"embedding_params,omitempty"`
-	Archived              bool              `json:"archived,omitempty"`
-}
-
-func (c MetabaseClient) updateCard(id string, query putQuery) (*CardResponse, error) {
-	queryJson, err := json.Marshal(query)
-	if err != nil {
-		log.Printf("json creation failed\n")
-		return nil, err
-	}
-	log.Printf("updateCard JSON: %s", string(queryJson))
-
-	log.Printf("init http client\n")
-	url := c.host + "/api/card/" + id
-	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(queryJson))
-	req.Header.Add("Content-Type", `application/json`)
-	req.Header.Add("X-Metabase-Session", c.id)
-	resp, err := c.httpClient().Do(req)
-	log.Printf("performed request: updateCard \n")
-	if err != nil {
-		log.Printf("request failed\n")
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
-
-	if resp.StatusCode >= 400 {
-		log.Printf("request failed with status %d \n", resp.StatusCode)
-		return nil, errors.New("Update Request failed " + string(body))
-	}
-	log.Printf("updateCard request succeeded\n")
-	log.Printf("updateCard Response: %s", string(body))
-	res := CardResponse{}
-	json.Unmarshal(body, &res)
-	return &res, nil
-}
-
-type authRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-type authResponse struct {
-	Id string `json:"id"`
-}
-
-func GetMetabaseClient(host string, username string, password string) (*MetabaseClient, error) {
-	query := authRequest{
+func NewClient(host string, username string, password string) (*MetabaseClient, error) {
+	query := AuthRequest{
 		Username: username,
 		Password: password,
 	}
@@ -132,14 +35,14 @@ func GetMetabaseClient(host string, username string, password string) (*Metabase
 		log.Printf("request failed with status %d", resp.StatusCode)
 		return nil, errors.New("Could not initialize session with metabase")
 	}
-	log.Printf("GetMetabaseClient request succeeded\n")
+	log.Printf("NewClient request succeeded\n")
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("response reading failed\n")
 		return nil, err
 	}
-	response := authResponse{}
+	response := AuthResponse{}
 	json.Unmarshal(body, &response)
 	res := MetabaseClient{
 		host:   host,
@@ -150,12 +53,45 @@ func GetMetabaseClient(host string, username string, password string) (*Metabase
 	return &res, nil
 }
 
-func (c MetabaseClient) deleteCard(id string) error {
+func (c MetabaseClient) UpdateCard(id string, query UpdateCardQuery) (*CardResponse, error) {
+	queryJson, err := json.Marshal(query)
+	if err != nil {
+		log.Printf("json creation failed\n")
+		return nil, err
+	}
+	log.Printf("UpdateCard JSON: %s", string(queryJson))
+
+	log.Printf("init http client\n")
+	url := c.host + "/api/card/" + id
+	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(queryJson))
+	req.Header.Add("Content-Type", `application/json`)
+	req.Header.Add("X-Metabase-Session", c.id)
+	resp, err := c.Client().Do(req)
+	log.Printf("performed request: UpdateCard \n")
+	if err != nil {
+		log.Printf("request failed\n")
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	if resp.StatusCode >= 400 {
+		log.Printf("request failed with status %d \n", resp.StatusCode)
+		return nil, errors.New("Update Request failed " + string(body))
+	}
+	log.Printf("UpdateCard request succeeded\n")
+	log.Printf("UpdateCard Response: %s", string(body))
+	res := CardResponse{}
+	json.Unmarshal(body, &res)
+	return &res, nil
+}
+
+func (c MetabaseClient) DeleteCard(id string) error {
 	url := c.host + "/api/card/" + id
 	log.Printf("Deleting card @ %s \n", url)
 	req, _ := http.NewRequest("DELETE", url, nil)
 	req.Header.Add("X-Metabase-Session", c.id)
-	_, err := c.httpClient().Do(req)
+	_, err := c.Client().Do(req)
 	log.Printf("performed request: deleteCard\n")
 	if err != nil {
 		log.Printf("request failed\n")
@@ -164,13 +100,13 @@ func (c MetabaseClient) deleteCard(id string) error {
 	return nil
 }
 
-func (c MetabaseClient) getCard(id string) (*CardResponse, error) {
+func (c MetabaseClient) GetCard(id string) (*CardResponse, error) {
 	url := c.host + "/api/card/" + id
 	log.Printf("Getting card @ %s \n", url)
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Add("Content-Type", `application/json`)
 	req.Header.Add("X-Metabase-Session", c.id)
-	resp, err := c.httpClient().Do(req)
+	resp, err := c.Client().Do(req)
 	log.Printf("performed request getCard\n")
 	if err != nil {
 		log.Printf("request failed\n")
@@ -185,16 +121,7 @@ func (c MetabaseClient) getCard(id string) (*CardResponse, error) {
 	return &res, nil
 }
 
-type postQuery struct {
-	Name                  string            `json:"name"`
-	Display               string            `json:"display"`
-	VisualizationSettings map[string]string `json:"visualization_settings"`
-	DatasetQuery          Query             `json:"dataset_query"`
-	Description           string            `json:"description,omitempty"`
-	CollectionId          int               `json:"collection_id,omitempty"`
-}
-
-func (c MetabaseClient) postCard(query postQuery) (*CardResponse, error) {
+func (c MetabaseClient) CreateCard(query CreateCardQuery) (*CardResponse, error) {
 	queryJson, err := json.Marshal(query)
 	if err != nil {
 		log.Printf("json creation failed\n")
@@ -206,7 +133,7 @@ func (c MetabaseClient) postCard(query postQuery) (*CardResponse, error) {
 	req, _ := http.NewRequest("POST", c.host+"/api/card", bytes.NewBuffer(queryJson))
 	req.Header.Add("Content-Type", `application/json`)
 	req.Header.Add("X-Metabase-Session", c.id)
-	resp, err := c.httpClient().Do(req)
+	resp, err := c.Client().Do(req)
 	log.Printf("performed request postCard\n")
 	if err != nil {
 		log.Printf("request failed")
@@ -225,7 +152,7 @@ func (c MetabaseClient) postCard(query postQuery) (*CardResponse, error) {
 	return &res, nil
 }
 
-func (c MetabaseClient) httpClient() *http.Client {
+func (c MetabaseClient) Client() *http.Client {
 	if c.client == nil {
 		c.client = new(http.Client)
 	}

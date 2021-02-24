@@ -31,12 +31,12 @@ type MetabaseClientMock struct{}
 var cards = map[int]*CardResponse{}
 var lastId int = 0
 
-func (c MetabaseClientMock) updateCard(id string, query putQuery) (*CardResponse, error) {
+func (c MetabaseClientMock) UpdateCard(id string, query UpdateCardQuery) (*CardResponse, error) {
 	res := cards[lastId]
 
 	return res, nil
 }
-func (c MetabaseClientMock) postCard(query postQuery) (*CardResponse, error) {
+func (c MetabaseClientMock) CreateCard(query CreateCardQuery) (*CardResponse, error) {
 	lastId++
 	res := &CardResponse{
 		Name:         query.Name,
@@ -48,9 +48,9 @@ func (c MetabaseClientMock) postCard(query postQuery) (*CardResponse, error) {
 	cards[lastId] = res
 	return res, nil
 }
-func (c MetabaseClientMock) getCard(id string) (*CardResponse, error) {
+func (c MetabaseClientMock) GetCard(id string) (*CardResponse, error) {
 	return cards[lastId], nil
 }
-func (c MetabaseClientMock) deleteCard(id string) error {
+func (c MetabaseClientMock) DeleteCard(id string) error {
 	return nil
 }

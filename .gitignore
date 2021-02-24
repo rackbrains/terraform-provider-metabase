@@ -19,3 +19,5 @@ crash.log
 terraform.tfstate*
 
 bin
+.terraform
+*.lock.hcl

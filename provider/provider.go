@@ -41,7 +41,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	password := d.Get("password").(string)
 	host := d.Get("host").(string)
 
-	client, err := GetMetabaseClient(host, username, password)
+	client, err := NewClient(host, username, password)
 
 	if err != nil {
 		log.Printf("client initialization failed\n")
