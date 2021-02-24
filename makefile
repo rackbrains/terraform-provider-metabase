@@ -41,3 +41,12 @@ testacc:
 testcov:
 	TF_ACC=1 go test $(TEST) -v $(TESTARGS) -timeout 120m -coverprofile=coverage.out
 	go tool cover -html=coverage.out
+
+init:
+	cd examples && terraform init
+
+plan: init
+	cd examples && terraform plan
+
+apply:
+	cd examples && terraform apply
